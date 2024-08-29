@@ -81,8 +81,6 @@ namespace CallGroup.Tests
             receivedOperations.Should().BeEquivalentTo(new List<int> { 1, 2 });
         }
 
-
-
         [Fact]
         public void ProcessNewJoiner_WhenCalledWithValidState_ShouldAddRequestAndSetBarrier()
         {
@@ -106,7 +104,47 @@ namespace CallGroup.Tests
             requests.Should().HaveCount(2);
         }
 
+        [Fact]
+        public async Task Join_WithTooManyParticipants_ShouldThrow()
+        {
+            var callGroup = new CallGroup<int>(2, _ => Task.CompletedTask, TimeSpan.FromSeconds(1));
 
+            var task1 = callGroup.Join(1);
+            var task2 = callGroup.Join(2);
 
+            await Task.WhenAll(task1, task2);
+
+            Func<Task> act = () => callGroup.Join(3);
+            await act.Should().ThrowAsync<Exception>().WithMessage("Too many participants!");
+        }
+
+        [Fact]
+        public async Task Join_WithCorrectParticipantCount_ShouldExecuteDelegate()
+        {
+            bool delegateExecuted = false;
+            var callGroup = new CallGroup<int>(2, _ =>
+            {
+                delegateExecuted = true;
+                return Task.CompletedTask;
+            }, TimeSpan.FromSeconds(1));
+
+            var task1 = callGroup.Join(1);
+            var task2 = callGroup.Join(2);
+
+            await Task.WhenAll(task1, task2);
+
+            delegateExecuted.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Join_WithTimeout_ShouldThrow()
+        {
+            var callGroup = new CallGroup<int>(2, _ => Task.CompletedTask, TimeSpan.FromMilliseconds(100));
+
+            var task = callGroup.Join(1);
+
+            Func<Task> act = () => task;
+            await act.Should().ThrowAsync<Exception>();
+        }
     }
 }
