@@ -1,5 +1,7 @@
 ﻿using Xunit;
 using FluentAssertions;
+using System.Reflection;
+using NSubstitute;
 
 
 namespace CallGroup.Tests
@@ -28,6 +30,11 @@ namespace CallGroup.Tests
             act.Should().Throw<ArgumentException>();
         }
 
+        [Fact]
+        public void Constructor_ThrowsException_WhenParticipantCountIsNegative()
+        {
+            Assert.Throws<ArgumentException>(() => new CallGroup<int>(-1, _ => Task.CompletedTask, TimeSpan.FromSeconds(1)));
+        }
 
         [Fact]
         public async Task Leave_WithCorrectParticipantCount_ShouldExecuteDelegate()
@@ -73,6 +80,33 @@ namespace CallGroup.Tests
 
             receivedOperations.Should().BeEquivalentTo(new List<int> { 1, 2 });
         }
+
+
+
+        [Fact]
+        public void ProcessNewJoiner_WhenCalledWithValidState_ShouldAddRequestAndSetBarrier()
+        {
+            // Arrange
+            int participantCount = 2;
+            var delegateMock = Substitute.For<Func<IReadOnlyCollection<int>, Task>>();
+            delegateMock(Arg.Any<IReadOnlyCollection<int>>()).Returns(Task.CompletedTask);
+            var callGroup = new CallGroup<int>(participantCount, delegateMock, TimeSpan.FromSeconds(5));
+
+            // Access the private method using reflection
+            var processNewJoinerMethod = typeof(CallGroup<int>).GetMethod("ProcessNewJoiner", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            var requests = new List<int>();
+            var action = new Action(() => requests.Add(1));
+
+            // Act
+            processNewJoinerMethod.Invoke(callGroup, new object[] { action });
+            processNewJoinerMethod.Invoke(callGroup, new object[] { action });
+
+            // Assert
+            requests.Should().HaveCount(2);
+        }
+
+
 
     }
 }
