@@ -59,5 +59,20 @@ namespace CallGroup.Tests
             act.Should().Throw<Exception>();
         }
 
+        [Fact]
+        public async Task GroupCallDelegate_ShouldReceiveCorrectOperations()
+        {
+            List<int> receivedOperations = null;
+            var callGroup = new CallGroup<int>(2, ops =>
+            {
+                receivedOperations = new List<int>(ops);
+                return Task.CompletedTask;
+            }, TimeSpan.FromSeconds(1));
+
+            await Task.WhenAll(callGroup.Join(1), callGroup.Join(2));
+
+            receivedOperations.Should().BeEquivalentTo(new List<int> { 1, 2 });
+        }
+
     }
 }
