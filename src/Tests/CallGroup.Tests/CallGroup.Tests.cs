@@ -28,5 +28,36 @@ namespace CallGroup.Tests
             act.Should().Throw<ArgumentException>();
         }
 
+
+        [Fact]
+        public async Task Leave_WithCorrectParticipantCount_ShouldExecuteDelegate()
+        {
+            bool delegateExecuted = false;
+            var callGroup = new CallGroup<int>(2, _ =>
+            {
+                delegateExecuted = true;
+                return Task.CompletedTask;
+            }, TimeSpan.FromSeconds(1));
+
+            var task = callGroup.Join(1);
+            callGroup.Leave();
+
+            await task;
+
+            delegateExecuted.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Leave_WithTooManyParticipants_ShouldThrow()
+        {
+            var callGroup = new CallGroup<int>(2, _ => Task.CompletedTask, TimeSpan.FromSeconds(1));
+
+            callGroup.Leave();
+            callGroup.Leave();
+
+            Action act = () => callGroup.Leave();
+            act.Should().Throw<Exception>();
+        }
+
     }
 }
